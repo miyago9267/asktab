@@ -19,18 +19,20 @@ Chromium browser — Arc included. My browser stays my browser.
 ## How it works
 
 ```
-popup (settings + markdown chat) ──SSE──▶ 127.0.0.1:8787 ──▶ claude -p / codex exec
-        │
-        └─ chrome.scripting ──▶ tab content (article/main/body text + selection)
+popup (settings + markdown chat) ──native messaging──▶ host (Bun, on demand)
+        │                                                ├─ claude -p (stream-json)
+        └─ chrome.scripting ──▶ tab content              └─ codex app-server (deltas)
+           (article/main/body text + selection)
 ```
 
 - **Extension** (MV3, TypeScript): popup with provider / model / speed /
   target-tab pickers and a chat window (marked + DOMPurify + highlight.js).
-  Page text and your selection are captured on every send.
-- **Companion server** (Bun + Hono, localhost only): wraps `claude -p`
-  (stream-json, token streaming) and `codex exec --json` (read-only sandbox,
-  ephemeral), streams back over SSE. Codex models are discovered live via
-  `codex debug models`; speed maps to `model_reasoning_effort`.
+  Page text and your selection are captured on every send; screenshots and
+  YouTube transcripts are opt-in.
+- **Native host** (Bun): launched by the browser on demand, gone when the
+  popup closes — nothing to keep running. Wraps `claude -p` and a codex
+  app-server session, both streaming token deltas. Codex models are
+  discovered live; speed maps to `model_reasoning_effort`.
 - **Usage stats**: per-reply token/cost line, session total, and daily
   totals persisted in `chrome.storage.local`.
 
@@ -38,21 +40,23 @@ popup (settings + markdown chat) ──SSE──▶ 127.0.0.1:8787 ──▶ cla
 
 ```bash
 bun install
+bun run install-host     # registers the native host + a stable extension ID
 bun run build:ext        # -> extension/dist
-bun run server           # keep running on 127.0.0.1:8787
 ```
 
 Then `chrome://extensions` (Arc: `arc://extensions`) → Developer mode →
-Load unpacked → `extension/dist/`.
+Load unpacked → `extension/dist/`. That's it — no server to start.
 
 Requires [Bun](https://bun.sh) plus the `claude` and `codex` CLIs on PATH
-and logged in.
+and logged in. Re-run `install-host` if you move the repo.
 
 ## Development
 
 ```bash
 bun test server                      # prompt builder + parser tests
 bun run --cwd extension watch        # rebuild popup on change
+bun run server                       # optional HTTP dev server (curl-able);
+                                     # the popup falls back to it automatically
 ```
 
 Spec lives in `docs/specs/asktab-prototype/`.

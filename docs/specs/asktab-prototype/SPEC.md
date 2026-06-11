@@ -107,6 +107,34 @@ if the app-server path fails before yielding any output, the request
 falls back to the exec pipeline (whole message at the end). claude already
 streams via `--include-partial-messages`; nothing changed there.
 
+## Native Messaging Transport (ADR-004, batch 5)
+
+Revisits ADR-001: requiring a manually started server is unacceptable for
+an extension ("nothing outside the browser"). Native messaging makes the
+browser launch the host process on `connectNative` and reap it when the
+port closes — no daemon, no port, no manual step.
+
+- **Host** (`server/src/host.ts`): same provider/catalog modules as the
+  HTTP server, wrapped in Chrome's stdio framing (4-byte LE length + JSON
+  both ways; host→browser messages capped at 1 MB — deltas are small).
+  Requests `{id, type: chat|providers|health}`; responses tagged with the
+  same id. stdin EOF (port closed) exits the host.
+- **Extension**: popup talks native-first; if the host is not installed,
+  it falls back to the HTTP server (which stays in-repo as a curl-able
+  dev tool). Requires the `nativeMessaging` permission.
+- **Stable extension ID**: unpacked IDs derive from the install path, so
+  each user generates a local RSA key (`extension/.key.pem`, gitignored);
+  the build injects its public key into `dist/manifest.json` and the
+  install script derives the matching ID for the host manifest.
+- **Install** (`bun run install-host`): generates the key if missing,
+  writes an absolute-path wrapper script (browsers launch hosts with a
+  bare env — no PATH), and installs `com.miyago9267.asktab.json` host
+  manifests into Chrome / Arc / Brave / Edge / Chromium dirs that exist.
+
+Trade-off: each popup open spawns a fresh host (and its codex app-server
+child), adding ~1s handshake before the first codex token. Acceptable;
+a background service-worker keepalive can amortize it later.
+
 ## Security
 
 - Server binds 127.0.0.1 only.

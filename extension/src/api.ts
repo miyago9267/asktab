@@ -1,4 +1,7 @@
 export const SERVER = "http://127.0.0.1:8787";
+const HOST_NAME = "com.miyago9267.asktab";
+
+export type Transport = "native" | "http" | "none";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -40,16 +43,99 @@ export interface UsageStats {
   durationMs?: number;
 }
 
-export async function checkHealth(): Promise<boolean> {
+// --- native messaging transport (primary) ---
+
+let nativePort: chrome.runtime.Port | null = null;
+let nextId = 1;
+const handlers = new Map<number, (msg: any) => void>();
+
+function connectNative(): Promise<chrome.runtime.Port | null> {
+  return new Promise((resolve) => {
+    let port: chrome.runtime.Port;
+    try {
+      port = chrome.runtime.connectNative(HOST_NAME);
+    } catch {
+      return resolve(null);
+    }
+    let settled = false;
+    const settle = (v: chrome.runtime.Port | null) => {
+      if (!settled) {
+        settled = true;
+        resolve(v);
+      }
+    };
+    port.onMessage.addListener((msg: any) => {
+      handlers.get(msg?.id)?.(msg);
+    });
+    port.onDisconnect.addListener(() => {
+      void chrome.runtime.lastError; // consume "host not found" etc.
+      nativePort = null;
+      for (const h of handlers.values()) {
+        h({ type: "error", message: "native host disconnected" });
+        h({ type: "done" });
+      }
+      handlers.clear();
+      settle(null);
+    });
+    const id = nextId++;
+    handlers.set(id, () => {
+      handlers.delete(id);
+      settle(port);
+    });
+    port.postMessage({ id, type: "health" });
+    setTimeout(() => settle(null), 2000);
+  });
+}
+
+async function getNative(): Promise<chrome.runtime.Port | null> {
+  if (nativePort) return nativePort;
+  nativePort = await connectNative();
+  return nativePort;
+}
+
+/** Sends one request and feeds tagged responses to onEvent until done. */
+function nativeStream(
+  port: chrome.runtime.Port,
+  req: object,
+  onEvent: (msg: any) => void,
+): Promise<void> {
+  return new Promise((resolve) => {
+    const id = nextId++;
+    handlers.set(id, (msg) => {
+      if (msg.type === "done") {
+        handlers.delete(id);
+        resolve();
+      } else {
+        onEvent(msg);
+      }
+    });
+    port.postMessage({ ...req, id });
+  });
+}
+
+// --- public API: native first, HTTP dev server as fallback ---
+
+export async function detectTransport(): Promise<Transport> {
+  if (await getNative()) return "native";
   try {
     const res = await fetch(`${SERVER}/health`, { signal: AbortSignal.timeout(1500) });
-    return res.ok;
+    if (res.ok) return "http";
   } catch {
-    return false;
+    // fall through
   }
+  return "none";
 }
 
 export async function fetchProviders(): Promise<ProviderCatalog> {
+  const port = await getNative();
+  if (port) {
+    let catalog: ProviderCatalog | null = null;
+    await nativeStream(port, { type: "providers" }, (msg) => {
+      if (msg.type === "providers") catalog = msg.catalog;
+    });
+    if (catalog) return catalog;
+    throw new Error("native host returned no catalog");
+  }
   const res = await fetch(`${SERVER}/providers`);
   if (!res.ok) throw new Error(`providers: HTTP ${res.status}`);
   return res.json();
@@ -65,6 +151,16 @@ export async function streamChat(
   onError: (message: string) => void,
   onUsage: (usage: UsageStats) => void,
 ): Promise<void> {
+  const port = await getNative();
+  if (port) {
+    await nativeStream(port, { type: "chat", payload: req }, (msg) => {
+      if (msg.type === "delta" && msg.text) onDelta(msg.text);
+      else if (msg.type === "usage" && msg.usage) onUsage(msg.usage);
+      else if (msg.type === "error") onError(msg.message ?? "unknown error");
+    });
+    return;
+  }
+
   const res = await fetch(`${SERVER}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

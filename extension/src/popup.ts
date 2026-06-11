@@ -1,5 +1,5 @@
 import {
-  checkHealth,
+  detectTransport,
   fetchProviders,
   streamChat,
   type ChatMessage,
@@ -248,7 +248,7 @@ async function send() {
     saveSession();
   } catch (err) {
     assistantEl.innerHTML = renderMarkdown(`> ⚠ ${String(err)}`);
-    setStatus("server 連線失敗，確認 `bun run server` 還活著", true);
+    setStatus("backend 連線失敗 — 檢查 install-host 或 dev server", true);
   } finally {
     assistantEl.classList.remove("pending");
     busy = false;
@@ -258,9 +258,12 @@ async function send() {
 }
 
 async function init() {
-  const alive = await checkHealth();
+  const transport = await detectTransport();
+  const alive = transport !== "none";
   if (!alive) {
-    setStatus("找不到 local server — 先跑 `bun run server` (127.0.0.1:8787)", true);
+    setStatus("找不到 native host — 執行 `bun run install-host`（或開 dev server）", true);
+  } else if (transport === "http") {
+    setStatus("via dev server (http)");
   }
 
   if (alive) {

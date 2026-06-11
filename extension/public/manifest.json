@@ -3,7 +3,7 @@
   "name": "AskTab",
   "version": "0.1.0",
   "description": "Analyze the current or a specific tab with local Claude / Codex CLIs",
-  "permissions": ["tabs", "scripting", "storage"],
+  "permissions": ["tabs", "scripting", "storage", "nativeMessaging"],
   "host_permissions": ["<all_urls>", "http://127.0.0.1:8787/*"],
   "action": {
     "default_popup": "popup.html",

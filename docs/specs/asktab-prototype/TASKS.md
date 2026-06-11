@@ -52,3 +52,14 @@
       images as localImage inputs; idle watchdog 300s
 - [x] HTTP E2E: token-level deltas + usage + process reuse verified
 - [ ] Future: model/list RPC could replace `codex debug models`
+
+## Batch 5: native messaging (no manual server)
+
+- [x] stdio framing codec (4-byte LE + JSON, split/concat safe, tested)
+- [x] Host entry (health/providers/chat over framed stdio, exits on EOF)
+- [x] install-host script: RSA key -> stable extension ID, abs-path
+      wrapper, host manifests for Chrome/Arc/Brave/Edge/Chromium
+- [x] build:ext injects key into dist/manifest.json; nativeMessaging perm
+- [x] popup: native-first transport, HTTP dev server as automatic fallback
+- [x] E2E: framed health/providers/chat verified against the real host
+- [ ] Arc live test: reload extension, confirm "no server" flow (Miyago)
