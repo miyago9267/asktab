@@ -78,3 +78,14 @@
 - [x] E2E under bare PATH via host: 4 providers detected, gemini + opencode
       streamed with usage
 - [ ] Arc live test with gemini/opencode (Miyago)
+
+## Batch 7: Gatekeeper fix (quarantine-safe transport)
+
+- [x] Root cause: browser quarantine flag inherits down the process tree;
+      opencode extracts random-named unsigned dylibs per run -> dialog spam
+- [x] install-host registers launchd agent for the HTTP server
+- [x] popup transport priority flipped: http (launchd) first, native
+      messaging fallback with Gatekeeper warning
+- [x] Verified: dylib via launchd path has no quarantine xattr; opencode
+      chat clean end-to-end
+- [ ] Arc retest after extension reload (Miyago)

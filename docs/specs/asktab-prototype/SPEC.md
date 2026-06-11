@@ -178,3 +178,23 @@ gateway, not a one-shot exec CLI — wrong shape for this pipeline).
 TDD applied to pure logic only (prompt builder, JSONL/SSE event parsers)
 via `bun test`. UI and process-spawn glue verified manually — prototype
 trade-off, recorded here per TDD rule #3.
+
+## Quarantine-Safe Transport (ADR-006, batch 7)
+
+Symptom: Gatekeeper "Apple cannot verify…" dialogs on every popup open /
+opencode chat. Root cause: browsers set LSFileQuarantineEnabled, and the
+quarantine process flag inherits down the native-messaging process tree;
+opencode (bun-compiled) extracts a randomly-named unsigned dylib to TMPDIR
+on every run and dlopens it — quarantined + unsigned = Gatekeeper dialog.
+Random filenames defeat pre-warming or post-hoc xattr cleanup (race with
+dlopen). claude/codex/gemini do not extract dylibs.
+
+Fix: spawn CLIs with launchd as the ancestor instead of the browser.
+install-host registers a LaunchAgent (com.miyago9267.asktab.server,
+RunAtLoad + KeepAlive) running the existing HTTP server; the popup now
+prefers HTTP and uses native messaging only as fallback (with a status
+warning about Gatekeeper). Verified: dylibs created under the launchd
+server carry no com.apple.quarantine xattr.
+
+Bonus: the codex app-server child persists across popups, removing the
+per-popup ~1s handshake of the pure native path.

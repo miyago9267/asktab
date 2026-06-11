@@ -114,21 +114,32 @@ function nativeStream(
   });
 }
 
-// --- public API: native first, HTTP dev server as fallback ---
+// --- public API: HTTP (launchd-managed) first, native messaging fallback ---
+// HTTP is preferred because the server runs under launchd, outside the
+// browser's quarantine inheritance (Gatekeeper pops on CLIs that extract
+// unsigned dylibs when they descend from the browser process tree).
 
-export async function detectTransport(): Promise<Transport> {
-  if (await getNative()) return "native";
+let httpAlive: boolean | null = null;
+
+async function checkHttp(): Promise<boolean> {
+  if (httpAlive !== null) return httpAlive;
   try {
     const res = await fetch(`${SERVER}/health`, { signal: AbortSignal.timeout(1500) });
-    if (res.ok) return "http";
+    httpAlive = res.ok;
   } catch {
-    // fall through
+    httpAlive = false;
   }
+  return httpAlive;
+}
+
+export async function detectTransport(): Promise<Transport> {
+  if (await checkHttp()) return "http";
+  if (await getNative()) return "native";
   return "none";
 }
 
 export async function fetchProviders(): Promise<ProviderCatalog> {
-  const port = await getNative();
+  const port = (await checkHttp()) ? null : await getNative();
   if (port) {
     let catalog: ProviderCatalog | null = null;
     await nativeStream(port, { type: "providers" }, (msg) => {
@@ -152,7 +163,7 @@ export async function streamChat(
   onError: (message: string) => void,
   onUsage: (usage: UsageStats) => void,
 ): Promise<void> {
-  const port = await getNative();
+  const port = (await checkHttp()) ? null : await getNative();
   if (port) {
     await nativeStream(port, { type: "chat", payload: req }, (msg) => {
       if (msg.type === "delta" && msg.text) onDelta(msg.text);

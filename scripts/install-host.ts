@@ -85,6 +85,43 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+// 4. launchd agent for the HTTP server — the preferred transport on macOS.
+// Browsers propagate their quarantine flag down the process tree, so CLIs
+// that extract unsigned dylibs (opencode) trigger Gatekeeper on every run
+// when spawned under the native messaging host. launchd as the ancestor
+// avoids quarantine inheritance entirely.
+const agentLabel = "com.miyago9267.asktab.server";
+const agentPlist = `${homedir()}/Library/LaunchAgents/${agentLabel}.plist`;
+await mkdir(`${homedir()}/Library/LaunchAgents`, { recursive: true });
+await Bun.write(
+  agentPlist,
+  `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>${agentLabel}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${process.execPath}</string>
+    <string>run</string>
+    <string>${root}/server/src/index.ts</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/asktab-server.log</string>
+  <key>StandardErrorPath</key><string>/tmp/asktab-server.log</string>
+</dict>
+</plist>
+`,
+);
+const uid = process.getuid?.() ?? 501;
+await Bun.spawn(["launchctl", "bootout", `gui/${uid}/${agentLabel}`], { stderr: "ignore" }).exited;
+const boot = Bun.spawn(["launchctl", "bootstrap", `gui/${uid}`, agentPlist], { stderr: "pipe" });
+if ((await boot.exited) !== 0) {
+  console.error("launchctl bootstrap failed:", await new Response(boot.stderr).text());
+}
+
 console.log(`extension ID: ${extensionId}`);
 console.log(`host manifest installed for: ${installed.join(", ") || "no browsers found"}`);
+console.log(`launchd agent: ${agentLabel} (server on 127.0.0.1:8787)`);
 console.log("next: bun run build:ext, then (re)load extension/dist in the browser");

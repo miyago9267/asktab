@@ -261,9 +261,9 @@ async function init() {
   const transport = await detectTransport();
   const alive = transport !== "none";
   if (!alive) {
-    setStatus("找不到 native host — 執行 `bun run install-host`（或開 dev server）", true);
-  } else if (transport === "http") {
-    setStatus("via dev server (http)");
+    setStatus("找不到 backend — 執行 `bun run install-host`", true);
+  } else if (transport === "native") {
+    setStatus("via native host（launchd server 未啟動，opencode 可能觸發 Gatekeeper）");
   }
 
   if (alive) {
