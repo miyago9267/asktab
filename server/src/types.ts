@@ -1,4 +1,4 @@
-export type ProviderId = "claude" | "codex";
+export type ProviderId = "claude" | "codex" | "gemini" | "opencode";
 export type Speed = "low" | "medium" | "high";
 
 export interface ChatMessage {

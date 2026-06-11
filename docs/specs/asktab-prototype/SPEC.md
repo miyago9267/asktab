@@ -135,6 +135,32 @@ Trade-off: each popup open spawns a fresh host (and its codex app-server
 child), adding ~1s handshake before the first codex token. Acceptable;
 a background service-worker keepalive can amortize it later.
 
+## Multi-Provider Support (ADR-005, batch 6)
+
+Add gemini and opencode; openclaw rejected (a containerized assistant
+gateway, not a one-shot exec CLI — wrong shape for this pipeline).
+
+- **gemini** (`gemini -p "" -o stream-json -m <model>`, prompt via stdin):
+  `{type:"message", role:"assistant", delta:true, content}` chunks;
+  `{type:"result", stats}` carries tokens/duration (usage) and non-success
+  status (error). No effort flag → speed ignored. No catalog command →
+  curated model list (auto-gemini-3, gemini-3-flash-preview) + free text.
+- **opencode** (`opencode run --format json -m <model> <prompt-as-arg>`):
+  `{type:"text", part:{id, text}}` events carry accumulated part text —
+  parser tracks emitted length per part id and yields suffixes, which also
+  handles disjoint parts. `step_finish` carries tokens + cost (usage);
+  `error` events carry error.data.message. Models discovered live via
+  `opencode models` (10 min cache). `--variant` (reasoning effort) varies
+  per model and errors on mismatch → speed not mapped in v1.
+- **Provider detection**: the catalog only lists providers whose CLI
+  resolves on PATH (Bun.which), so the popup's provider menu mirrors the
+  machine. Validation in server/host derives from the same catalog.
+- **Images**: codex (`localImage`) and claude (Read tool) are first-class;
+  gemini/opencode get the file path in the prompt as best-effort — their
+  agents have read tools but headless tool approval is not guaranteed.
+- The extension needs no changes: provider/model/speed UI is already
+  catalog-driven.
+
 ## Security
 
 - Server binds 127.0.0.1 only.

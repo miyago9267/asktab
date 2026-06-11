@@ -1,7 +1,7 @@
 # AskTab
 
 Chat with the browser tab you're looking at, powered by the LLM CLIs you
-already have (`claude`, `codex`) — no API keys, no extra accounts.
+already have (`claude`, `codex`, `gemini`, `opencode`) — no API keys, no extra accounts.
 
 ## Why
 
@@ -47,8 +47,9 @@ bun run build:ext        # -> extension/dist
 Then `chrome://extensions` (Arc: `arc://extensions`) → Developer mode →
 Load unpacked → `extension/dist/`. That's it — no server to start.
 
-Requires [Bun](https://bun.sh) plus the `claude` and `codex` CLIs on PATH
-and logged in. Re-run `install-host` if you move the repo.
+Requires [Bun](https://bun.sh) plus at least one of the `claude` / `codex` /
+`gemini` / `opencode` CLIs on PATH and logged in — the provider menu shows
+whichever are installed. Re-run `install-host` if you move the repo.
 
 ## Development
 

@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
-import { getCatalog } from "./catalog";
+import { getCatalog, knownProviders } from "./catalog";
 import { runChat } from "./providers";
 import type { ChatRequest } from "./types";
 
-const PROVIDERS = ["claude", "codex"];
+const PROVIDERS: string[] = knownProviders();
 
 const PORT = Number(process.env.PORT ?? 8787);
 

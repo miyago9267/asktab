@@ -1,4 +1,5 @@
 import { tmpdir } from "node:os";
+import { SPAWN_ENV } from "../env";
 import type { ProviderEvent, Speed } from "../types";
 
 interface JsonRpcMessage {
@@ -97,6 +98,7 @@ class AppServerClient {
       stdin: "pipe",
       stdout: "pipe",
       stderr: "ignore",
+      env: SPAWN_ENV,
     });
     this.proc = proc;
     this.readLoop(proc).catch(() => {});

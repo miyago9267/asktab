@@ -63,3 +63,18 @@
 - [x] popup: native-first transport, HTTP dev server as automatic fallback
 - [x] E2E: framed health/providers/chat verified against the real host
 - [ ] Arc live test: reload extension, confirm "no server" flow (Miyago)
+
+## Batch 6: multi-provider (gemini + opencode)
+
+- [x] Recon: gemini stream-json shape, opencode json events + `opencode
+      models`; openclaw rejected (assistant gateway, wrong shape)
+- [x] Gemini adapter: assistant-delta parser + result stats usage (tested)
+- [x] Opencode adapter: part-suffix delta parser, step_finish usage,
+      `opencode models` catalog parsing (tested)
+- [x] Catalog: provider defs + PATH detection — menu mirrors installed CLIs
+- [x] Fix latent batch-5 bug: Bun snapshots env at startup, so bare browser
+      PATH broke every spawn; env.ts AUGMENTED_PATH/SPAWN_ENV now applied
+      to all Bun.which/Bun.spawn call sites
+- [x] E2E under bare PATH via host: 4 providers detected, gemini + opencode
+      streamed with usage
+- [ ] Arc live test with gemini/opencode (Miyago)

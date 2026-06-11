@@ -1,4 +1,6 @@
-import type { ModelInfo } from "./types";
+import { AUGMENTED_PATH, SPAWN_ENV } from "./env";
+import type { ModelInfo, ProviderId } from "./types";
+import { parseOpencodeModels } from "./providers/opencode";
 
 export interface ProviderInfo {
   label: string;
@@ -6,7 +8,7 @@ export interface ProviderInfo {
   speedNote: string;
 }
 
-export type Catalog = Record<"claude" | "codex", ProviderInfo>;
+export type Catalog = Partial<Record<ProviderId, ProviderInfo>>;
 
 /** Aliases verified against claude CLI 2.x; it exposes no catalog command. */
 const CLAUDE_MODELS: ModelInfo[] = [
@@ -14,6 +16,12 @@ const CLAUDE_MODELS: ModelInfo[] = [
   { id: "opus", label: "Opus (latest)", speeds: [] },
   { id: "sonnet", label: "Sonnet (latest)", speeds: [] },
   { id: "haiku", label: "Haiku (latest)", speeds: [] },
+];
+
+/** gemini CLI has no catalog command; observed defaults + free text. */
+const GEMINI_MODELS: ModelInfo[] = [
+  { id: "auto-gemini-3", label: "Auto (Gemini 3)", speeds: [] },
+  { id: "gemini-3-flash-preview", label: "Gemini 3 Flash", speeds: [] },
 ];
 
 /** Fallback if `codex debug models` fails (offline, version drift). */
@@ -42,35 +50,84 @@ export function parseCodexCatalog(raw: string): ModelInfo[] | null {
 }
 
 const TTL_MS = 10 * 60 * 1000;
-let cache: { at: number; models: ModelInfo[] } | null = null;
+const cache = new Map<string, { at: number; models: ModelInfo[] }>();
 
-async function loadCodexModels(): Promise<ModelInfo[]> {
-  if (cache && Date.now() - cache.at < TTL_MS) return cache.models;
+async function cached(
+  key: string,
+  load: () => Promise<ModelInfo[] | null>,
+  fallback: ModelInfo[],
+): Promise<ModelInfo[]> {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.models;
   try {
-    const proc = Bun.spawn(["codex", "debug", "models"], { stdout: "pipe", stderr: "ignore" });
-    const out = await new Response(proc.stdout).text();
-    const models = parseCodexCatalog(out);
+    const models = await load();
     if (models?.length) {
-      cache = { at: Date.now(), models };
+      cache.set(key, { at: Date.now(), models });
       return models;
     }
   } catch {
-    // fall through to fallback
+    // fall through
   }
-  return CODEX_FALLBACK;
+  return fallback;
 }
 
+async function cliOutput(cmd: string[]): Promise<string> {
+  const proc = Bun.spawn(cmd, { stdout: "pipe", stderr: "ignore", env: SPAWN_ENV });
+  return await new Response(proc.stdout).text();
+}
+
+const loadCodexModels = () =>
+  cached("codex", async () => parseCodexCatalog(await cliOutput(["codex", "debug", "models"])), CODEX_FALLBACK);
+
+const loadOpencodeModels = () =>
+  cached("opencode", async () => parseOpencodeModels(await cliOutput(["opencode", "models"])), []);
+
+interface ProviderDef {
+  cli: string;
+  label: string;
+  speedNote: string;
+  models: () => Promise<ModelInfo[]> | ModelInfo[];
+}
+
+const PROVIDER_DEFS: Record<ProviderId, ProviderDef> = {
+  claude: {
+    cli: "claude",
+    label: "Claude (claude CLI)",
+    speedNote: "speed is ignored by the claude CLI",
+    models: () => CLAUDE_MODELS,
+  },
+  codex: {
+    cli: "codex",
+    label: "Codex (codex CLI)",
+    speedNote: "speed maps to model_reasoning_effort",
+    models: loadCodexModels,
+  },
+  gemini: {
+    cli: "gemini",
+    label: "Gemini (gemini CLI)",
+    speedNote: "speed is ignored by the gemini CLI",
+    models: () => GEMINI_MODELS,
+  },
+  opencode: {
+    cli: "opencode",
+    label: "OpenCode (opencode CLI)",
+    speedNote: "speed not mapped (per-model variants)",
+    models: loadOpencodeModels,
+  },
+};
+
+/** Only providers whose CLI resolves on PATH appear in the catalog. */
 export async function getCatalog(): Promise<Catalog> {
-  return {
-    claude: {
-      label: "Claude (claude CLI)",
-      models: CLAUDE_MODELS,
-      speedNote: "speed is ignored by the claude CLI",
-    },
-    codex: {
-      label: "Codex (codex CLI)",
-      models: await loadCodexModels(),
-      speedNote: "speed maps to model_reasoning_effort",
-    },
-  };
+  const catalog: Catalog = {};
+  for (const [id, def] of Object.entries(PROVIDER_DEFS) as [ProviderId, ProviderDef][]) {
+    if (!Bun.which(def.cli, { PATH: AUGMENTED_PATH })) continue;
+    const models = await def.models();
+    if (id === "opencode" && models.length === 0) continue; // installed but unusable
+    catalog[id] = { label: def.label, models, speedNote: def.speedNote };
+  }
+  return catalog;
+}
+
+export function knownProviders(): ProviderId[] {
+  return Object.keys(PROVIDER_DEFS) as ProviderId[];
 }

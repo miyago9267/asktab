@@ -6,6 +6,7 @@ import type { ChatRequest } from "./types";
 /**
  * Native messaging host entry point. The browser spawns this process on
  * chrome.runtime.connectNative and closes stdin when the port disconnects.
+ * PATH handling lives in env.ts (browser launches use a bare env).
  */
 
 interface HostRequest {

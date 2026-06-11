@@ -1,9 +1,12 @@
 import { unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { SPAWN_ENV } from "../env";
 import type { ChatRequest, ProviderEvent, ProviderId } from "../types";
 import { runCodexAppServer } from "./appserver";
 import { ClaudeStreamParser, claudeArgs } from "./claude";
 import { CodexStreamParser, codexArgs } from "./codex";
+import { GeminiStreamParser, geminiArgs } from "./gemini";
+import { OpencodeStreamParser, opencodeArgs } from "./opencode";
 import { buildPrompt } from "../prompt";
 
 interface LineParser {
@@ -11,13 +14,29 @@ interface LineParser {
 }
 
 function makeParser(provider: ProviderId): LineParser {
-  return provider === "claude" ? new ClaudeStreamParser() : new CodexStreamParser();
+  switch (provider) {
+    case "claude":
+      return new ClaudeStreamParser();
+    case "codex":
+      return new CodexStreamParser();
+    case "gemini":
+      return new GeminiStreamParser();
+    case "opencode":
+      return new OpencodeStreamParser();
+  }
 }
 
-function makeArgs(req: ChatRequest, imagePaths: string[]): string[] {
-  return req.provider === "claude"
-    ? claudeArgs(req.model, req.speed, imagePaths)
-    : codexArgs(req.model, req.speed, imagePaths);
+function makeArgs(req: ChatRequest, imagePaths: string[], prompt: string): string[] {
+  switch (req.provider) {
+    case "claude":
+      return claudeArgs(req.model, req.speed, imagePaths);
+    case "codex":
+      return codexArgs(req.model, req.speed, imagePaths);
+    case "gemini":
+      return geminiArgs(req.model, req.speed);
+    case "opencode":
+      return opencodeArgs(req.model, req.speed, prompt);
+  }
 }
 
 /** Decodes data-URL screenshots into temp files the CLIs can open. */
@@ -36,9 +55,15 @@ async function writeImageFiles(images: string[]): Promise<string[]> {
 
 function imageNote(provider: ProviderId, paths: string[]): string {
   if (!paths.length) return "";
-  return provider === "claude"
-    ? `\n\nScreenshots of the page as currently rendered are saved at: ${paths.join(", ")}. View them with the Read tool before answering.`
-    : "\n\nScreenshots of the page as currently rendered are attached.";
+  switch (provider) {
+    case "codex":
+      return "\n\nScreenshots of the page as currently rendered are attached.";
+    case "claude":
+      return `\n\nScreenshots of the page as currently rendered are saved at: ${paths.join(", ")}. View them with the Read tool before answering.`;
+    default:
+      // gemini/opencode: best effort via their file-reading tools
+      return `\n\nScreenshots of the page as currently rendered are saved at: ${paths.join(", ")}. If you can read local files, view them before answering.`;
+  }
 }
 
 /**
@@ -82,10 +107,12 @@ async function* runCliChat(
   const parser = makeParser(req.provider);
 
   {
-    const proc = Bun.spawn(makeArgs(req, imagePaths), {
-      stdin: new TextEncoder().encode(prompt),
+    // opencode takes the prompt as an argv positional, not stdin
+    const proc = Bun.spawn(makeArgs(req, imagePaths, prompt), {
+      stdin: req.provider === "opencode" ? undefined : new TextEncoder().encode(prompt),
       stdout: "pipe",
       stderr: "pipe",
+      env: SPAWN_ENV,
     });
 
     let buffer = "";
