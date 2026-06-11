@@ -23,9 +23,12 @@
       <label class="chk" title="附上目前畫面的截圖（僅限作用中分頁）">
         <input type="checkbox" id="shot" />截圖
       </label>
-      <label class="chk" id="vtrans-label" hidden title="擷取偵測到的影片字幕逐字稿">
-        <input type="checkbox" id="vtrans" />影片字幕
-      </label>
+      <span class="cap-label" id="vmode-label" hidden>影片</span>
+      <select id="vmode" hidden title="影片擷取方式">
+        <option value="none">不擷取</option>
+        <option value="transcript">字幕</option>
+        <option value="frames">影格採樣</option>
+      </select>
       <span id="vnote" class="status"></span>
     </div>
     <div id="status" class="status"></div>

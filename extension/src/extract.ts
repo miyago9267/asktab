@@ -86,6 +86,77 @@ export async function fetchYtTranscript(
   }
 }
 
+export interface VideoProbe {
+  duration: number;
+  currentTime: number;
+  paused: boolean;
+  rect: { x: number; y: number; width: number; height: number };
+  dpr: number;
+}
+
+/** Pauses the video and reports geometry/state for the frame sampler. */
+function videoProber() {
+  const v = document.querySelector("video");
+  if (!v) return null;
+  const wasPaused = v.paused;
+  v.pause();
+  const r = v.getBoundingClientRect();
+  return {
+    duration: v.duration,
+    currentTime: v.currentTime,
+    paused: wasPaused,
+    rect: { x: r.x, y: r.y, width: r.width, height: r.height },
+    dpr: window.devicePixelRatio,
+  };
+}
+
+/** Seeks and resolves after the frame has painted (seeked + double rAF). */
+function videoSeeker(t: number) {
+  const v = document.querySelector("video");
+  if (!v) return Promise.resolve(false);
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      v.removeEventListener("seeked", onSeeked);
+      resolve(true);
+    };
+    const onSeeked = () => requestAnimationFrame(() => requestAnimationFrame(finish));
+    v.addEventListener("seeked", onSeeked);
+    setTimeout(finish, 2500);
+    v.currentTime = t;
+  });
+}
+
+function videoRestorer(t: number, wasPaused: boolean) {
+  const v = document.querySelector("video");
+  if (!v) return;
+  v.currentTime = t;
+  if (!wasPaused) void v.play();
+}
+
+export async function probeVideo(tabId: number): Promise<VideoProbe | null> {
+  try {
+    const [r] = await chrome.scripting.executeScript({ target: { tabId }, func: videoProber });
+    return (r?.result as VideoProbe) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function seekVideo(tabId: number, t: number): Promise<void> {
+  await chrome.scripting
+    .executeScript({ target: { tabId }, func: videoSeeker, args: [t] })
+    .catch(() => {});
+}
+
+export async function restoreVideo(tabId: number, t: number, paused: boolean): Promise<void> {
+  await chrome.scripting
+    .executeScript({ target: { tabId }, func: videoRestorer, args: [t, paused] })
+    .catch(() => {});
+}
+
 /** Captures the visible viewport; only valid when the tab is active. */
 export async function captureScreenshot(tab: chrome.tabs.Tab): Promise<string | null> {
   if (!tab.active || tab.windowId == null) return null;

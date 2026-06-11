@@ -14,6 +14,7 @@ import {
   listTabs,
 } from "./extract";
 import { renderMarkdown } from "./markdown";
+import { sampleVideoFrames } from "./sampler";
 import { addUsage, fmt, formatUsage, loadUsageRows, persistUsage, type UsageRow } from "./usage";
 
 const FALLBACK_SPEEDS = ["low", "medium", "high"];
@@ -35,25 +36,31 @@ const clearEl = $<HTMLButtonElement>("clear");
 const shotEl = $<HTMLInputElement>("shot");
 const statsEl = $<HTMLElement>("stats");
 const statsBtnEl = $<HTMLButtonElement>("stats-btn");
-const vtransLabelEl = $<HTMLLabelElement>("vtrans-label");
-const vtransEl = $<HTMLInputElement>("vtrans");
+const vmodeLabelEl = $<HTMLSpanElement>("vmode-label");
+const vmodeEl = $<HTMLSelectElement>("vmode");
 const vnoteEl = $<HTMLSpanElement>("vnote");
 
 let videoIsYouTube = false;
 
-/** Video capture is opt-in: the checkbox only offers, never auto-extracts. */
+/** Video capture is opt-in: the select only offers, never auto-extracts. */
 async function refreshVideoBar() {
   videoIsYouTube = false;
-  vtransLabelEl.hidden = true;
-  vtransEl.checked = false;
+  vmodeLabelEl.hidden = true;
+  vmodeEl.hidden = true;
+  vmodeEl.value = "none";
   vnoteEl.textContent = "";
   const tabId = Number(tabEl.value);
   if (!Number.isFinite(tabId)) return;
   const info = await detectVideo(tabId);
   if (!info || info.count === 0) return;
   videoIsYouTube = info.isYouTube;
-  if (info.isYouTube) vtransLabelEl.hidden = false;
-  else vnoteEl.textContent = "偵測到影片（非 YouTube，無字幕可抓）";
+  vmodeLabelEl.hidden = false;
+  vmodeEl.hidden = false;
+  const transcriptOpt = vmodeEl.querySelector<HTMLOptionElement>('option[value="transcript"]');
+  if (transcriptOpt) {
+    transcriptOpt.disabled = !info.isYouTube;
+    transcriptOpt.textContent = info.isYouTube ? "字幕" : "字幕（限 YouTube）";
+  }
 }
 
 interface TranscriptEntry {
@@ -228,7 +235,7 @@ async function send() {
   const page = Number.isFinite(tabId) ? await extractPage(tabId) : null;
   const notes: string[] = [];
 
-  if (page && vtransEl.checked && videoIsYouTube) {
+  if (page && vmodeEl.value === "transcript" && videoIsYouTube) {
     setStatus("擷取影片字幕…");
     const t = await fetchYtTranscript(tabId);
     if ("transcript" in t) {
@@ -239,6 +246,20 @@ async function send() {
   }
 
   const images: string[] = [];
+  if (vmodeEl.value === "frames") {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (tab?.active) {
+      const frames = await sampleVideoFrames(tab, 8, (i, n) => setStatus(`影格採樣中 ${i}/${n}…`));
+      if (frames.length) {
+        images.push(...frames);
+        if (page) page.content += `\n\n(${frames.length} video frames sampled evenly across the video are attached, in chronological order.)`;
+      } else {
+        notes.push("影格採樣失敗");
+      }
+    } else {
+      notes.push("影格採樣僅支援作用中分頁");
+    }
+  }
   if (shotEl.checked) {
     const tab = await chrome.tabs.get(tabId).catch(() => null);
     const shot = tab ? await captureScreenshot(tab) : null;
