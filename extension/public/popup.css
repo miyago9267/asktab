@@ -130,6 +130,35 @@ main {
   color: var(--muted);
 }
 
+main[hidden] { display: none; }
+
+#stats { gap: 4px; }
+
+#stats h3 {
+  margin: 6px 0 2px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+#stats table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+}
+
+#stats :is(th, td) {
+  border: 1px solid var(--border);
+  padding: 3px 6px;
+  text-align: right;
+}
+
+#stats :is(th, td):first-child { text-align: left; }
+
+#stats th { background: var(--panel); font-weight: 600; }
+
+#stats .empty { color: var(--muted); font-size: 12px; }
+
 .usage {
   align-self: flex-start;
   color: var(--muted);

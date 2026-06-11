@@ -26,7 +26,7 @@
 - [x] Usage stats: parsers emit usage events (claude result / codex
       turn.completed); per-reply line + session Σ in status bar;
       daily totals persisted to chrome.storage.local ("usageTotals")
-- [ ] Usage history view (data already accumulating)
+- [x] Usage history view: 統計 toggle in popup (today / 7d / 30d per-model tables; 30-day retention)
 
 ## Batch 3: visual & video capture (opt-in)
 

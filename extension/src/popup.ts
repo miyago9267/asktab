@@ -14,7 +14,7 @@ import {
   listTabs,
 } from "./extract";
 import { renderMarkdown } from "./markdown";
-import { addUsage, formatUsage, persistUsage } from "./usage";
+import { addUsage, fmt, formatUsage, loadUsageRows, persistUsage, type UsageRow } from "./usage";
 
 const FALLBACK_SPEEDS = ["low", "medium", "high"];
 
@@ -33,6 +33,8 @@ const inputEl = $<HTMLTextAreaElement>("input");
 const sendEl = $<HTMLButtonElement>("send");
 const clearEl = $<HTMLButtonElement>("clear");
 const shotEl = $<HTMLInputElement>("shot");
+const statsEl = $<HTMLElement>("stats");
+const statsBtnEl = $<HTMLButtonElement>("stats-btn");
 const vtransLabelEl = $<HTMLLabelElement>("vtrans-label");
 const vtransEl = $<HTMLInputElement>("vtrans");
 const vnoteEl = $<HTMLSpanElement>("vnote");
@@ -139,6 +141,54 @@ function syncSpeeds() {
   speedEl.value = speeds.includes(prev) ? prev : (speeds.includes("medium") ? "medium" : speeds[0]);
 }
 
+function usageTable(title: string, rows: UsageRow[]): DocumentFragment {
+  const frag = document.createDocumentFragment();
+  frag.appendChild(Object.assign(document.createElement("h3"), { textContent: title }));
+  if (!rows.length) {
+    frag.appendChild(
+      Object.assign(document.createElement("div"), { className: "empty", textContent: "無資料" }),
+    );
+    return frag;
+  }
+  const table = document.createElement("table");
+  const mkRow = (cells: string[], tag: "th" | "td") => {
+    const tr = document.createElement("tr");
+    for (const c of cells) tr.appendChild(Object.assign(document.createElement(tag), { textContent: c }));
+    return tr;
+  };
+  table.appendChild(mkRow(["model", "次數", "in", "out", "cost"], "th"));
+  const total = { requests: 0, input: 0, output: 0, costUsd: 0 };
+  for (const r of rows) {
+    table.appendChild(
+      mkRow([r.key, String(r.requests), fmt(r.input), fmt(r.output), r.costUsd ? `$${r.costUsd.toFixed(3)}` : "-"], "td"),
+    );
+    total.requests += r.requests;
+    total.input += r.input;
+    total.output += r.output;
+    total.costUsd += r.costUsd;
+  }
+  if (rows.length > 1) {
+    table.appendChild(
+      mkRow(["合計", String(total.requests), fmt(total.input), fmt(total.output), total.costUsd ? `$${total.costUsd.toFixed(3)}` : "-"], "td"),
+    );
+  }
+  frag.appendChild(table);
+  return frag;
+}
+
+async function toggleStats() {
+  if (statsEl.hidden) {
+    statsEl.replaceChildren(
+      usageTable("今天", await loadUsageRows(1)),
+      usageTable("最近 7 天", await loadUsageRows(7)),
+      usageTable("最近 30 天", await loadUsageRows(30)),
+    );
+  }
+  statsEl.hidden = !statsEl.hidden;
+  messagesEl.hidden = !statsEl.hidden;
+  statsBtnEl.textContent = statsEl.hidden ? "統計" : "返回";
+}
+
 function appendUsageMeta(el: HTMLElement, usage: UsageStats) {
   const meta = document.createElement("div");
   meta.className = "usage";
@@ -159,6 +209,11 @@ function addMessage(role: "user" | "assistant", content: string): HTMLDivElement
 async function send() {
   const text = inputEl.value.trim();
   if (!text || busy) return;
+  if (!statsEl.hidden) {
+    statsEl.hidden = true;
+    messagesEl.hidden = false;
+    statsBtnEl.textContent = "統計";
+  }
 
   busy = true;
   sendEl.disabled = true;
@@ -333,6 +388,7 @@ async function init() {
       send();
     }
   });
+  statsBtnEl.addEventListener("click", toggleStats);
   clearEl.addEventListener("click", () => {
     transcript = [];
     sessionUsage = { input: 0, output: 0, cachedInput: 0 };
