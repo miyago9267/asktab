@@ -15,8 +15,10 @@ const FALLBACK_SPEEDS = ["low", "medium", "high"];
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const providerEl = $<HTMLSelectElement>("provider");
-const modelEl = $<HTMLInputElement>("model");
-const modelListEl = $<HTMLDataListElement>("model-list");
+const modelEl = $<HTMLSelectElement>("model");
+const modelCustomEl = $<HTMLInputElement>("model-custom");
+
+const CUSTOM = "__custom__";
 const speedEl = $<HTMLSelectElement>("speed");
 const tabEl = $<HTMLSelectElement>("tab");
 const statusEl = $<HTMLDivElement>("status");
@@ -39,27 +41,39 @@ function setStatus(text: string, isError = false) {
   statusEl.classList.toggle("error", isError);
 }
 
+function currentModel(): string {
+  return modelEl.value === CUSTOM ? modelCustomEl.value.trim() : modelEl.value;
+}
+
 function saveSettings() {
   chrome.storage.local.set({
-    settings: { provider: providerEl.value, model: modelEl.value, speed: speedEl.value },
+    settings: { provider: providerEl.value, model: currentModel(), speed: speedEl.value },
   });
 }
 
-function syncModelList(provider: string, keepValue = false) {
+/** Populates the model select; unknown stored models land in "custom…". */
+function syncModelList(provider: string, restoreModel?: string) {
   const models = catalog[provider]?.models ?? [];
-  modelListEl.replaceChildren(
-    ...models.map((m) =>
-      Object.assign(document.createElement("option"), { value: m.id, label: m.label }),
-    ),
+  modelEl.replaceChildren(
+    ...models.map((m) => new Option(m.id, m.id)),
+    new Option("custom…", CUSTOM),
   );
-  if (!keepValue || !modelEl.value) modelEl.value = models[0]?.id ?? "";
+  if (restoreModel && models.some((m) => m.id === restoreModel)) {
+    modelEl.value = restoreModel;
+  } else if (restoreModel) {
+    modelEl.value = CUSTOM;
+    modelCustomEl.value = restoreModel;
+  } else {
+    modelEl.value = models[0]?.id ?? CUSTOM;
+  }
+  modelCustomEl.hidden = modelEl.value !== CUSTOM;
   syncSpeeds();
 }
 
 /** Speed options come from the selected model's catalog entry. */
 function syncSpeeds() {
   const models = catalog[providerEl.value]?.models ?? [];
-  const speeds = models.find((m) => m.id === modelEl.value.trim())?.speeds ?? FALLBACK_SPEEDS;
+  const speeds = models.find((m) => m.id === currentModel())?.speeds ?? FALLBACK_SPEEDS;
   const prev = speedEl.value;
   if (speeds.length === 0) {
     speedEl.replaceChildren(
@@ -125,7 +139,7 @@ async function send() {
     await streamChat(
       {
         provider: providerEl.value,
-        model: modelEl.value.trim(),
+        model: currentModel(),
         speed: speedEl.value,
         messages: history,
         page: page ?? undefined,
@@ -150,7 +164,7 @@ async function send() {
       assistantEl.insertAdjacentElement("afterend", meta);
       sessionUsage = addUsage(sessionUsage, usage);
       setSessionStatus();
-      persistUsage(providerEl.value, modelEl.value.trim(), usage);
+      persistUsage(providerEl.value, currentModel(), usage);
     }
   } catch (err) {
     assistantEl.innerHTML = renderMarkdown(`> ⚠ ${String(err)}`);
@@ -192,9 +206,7 @@ async function init() {
 
   const { settings } = await chrome.storage.local.get("settings");
   if (settings?.provider && catalog[settings.provider]) providerEl.value = settings.provider;
-  syncModelList(providerEl.value, true);
-  if (settings?.model) modelEl.value = settings.model;
-  syncSpeeds();
+  syncModelList(providerEl.value, settings?.model);
   if (settings?.speed) speedEl.value = settings.speed;
   if (!speedEl.value) syncSpeeds();
 
@@ -203,6 +215,12 @@ async function init() {
     saveSettings();
   });
   modelEl.addEventListener("change", () => {
+    modelCustomEl.hidden = modelEl.value !== CUSTOM;
+    if (modelEl.value === CUSTOM) modelCustomEl.focus();
+    syncSpeeds();
+    saveSettings();
+  });
+  modelCustomEl.addEventListener("change", () => {
     syncSpeeds();
     saveSettings();
   });

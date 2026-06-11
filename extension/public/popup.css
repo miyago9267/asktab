@@ -42,6 +42,7 @@ select, input, textarea, button {
 
 #provider { flex: 0 0 auto; }
 #model { flex: 1; min-width: 0; }
+#model-custom { flex: 1.2; min-width: 0; }
 #speed { flex: 0 0 auto; }
 #tab { flex: 1; min-width: 0; }
 
