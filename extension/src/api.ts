@@ -68,7 +68,8 @@ function connectNative(): Promise<chrome.runtime.Port | null> {
       handlers.get(msg?.id)?.(msg);
     });
     port.onDisconnect.addListener(() => {
-      void chrome.runtime.lastError; // consume "host not found" etc.
+      const err = chrome.runtime.lastError;
+      if (err?.message) console.warn("[asktab] native disconnect:", err.message);
       nativePort = null;
       for (const h of handlers.values()) {
         h({ type: "error", message: "native host disconnected" });
