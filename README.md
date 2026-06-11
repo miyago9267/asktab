@@ -1,4 +1,4 @@
-# Web Analyze
+# AskTab
 
 Chat with the browser tab you're looking at, powered by the LLM CLIs you
 already have (`claude`, `codex`) — no API keys, no extra accounts.
@@ -55,4 +55,4 @@ bun test server                      # prompt builder + parser tests
 bun run --cwd extension watch        # rebuild popup on change
 ```
 
-Spec lives in `docs/specs/web-analyze-prototype/`.
+Spec lives in `docs/specs/asktab-prototype/`.

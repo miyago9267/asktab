@@ -1,4 +1,4 @@
-# Web Analyze — Browser Tab Analysis via Local LLM CLIs
+# AskTab — Browser Tab Analysis via Local LLM CLIs
 
 ## What
 

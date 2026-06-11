@@ -27,7 +27,7 @@ async function writeImageFiles(images: string[]): Promise<string[]> {
     const m = dataUrl.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/s);
     if (!m) continue;
     const ext = m[1] === "jpeg" ? "jpg" : m[1];
-    const path = `${tmpdir()}/web-analyze-${Date.now()}-${i}.${ext}`;
+    const path = `${tmpdir()}/asktab-${Date.now()}-${i}.${ext}`;
     await Bun.write(path, Buffer.from(m[2], "base64"));
     paths.push(path);
   }

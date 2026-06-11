@@ -46,4 +46,4 @@ export default {
   fetch: app.fetch,
 };
 
-console.log(`web-analyze server on http://127.0.0.1:${PORT}`);
+console.log(`asktab server on http://127.0.0.1:${PORT}`);

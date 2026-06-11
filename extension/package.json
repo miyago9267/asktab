@@ -1,5 +1,5 @@
 {
-  "name": "@web-analyze/extension",
+  "name": "@asktab/extension",
   "private": true,
   "type": "module",
   "scripts": {

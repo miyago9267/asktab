@@ -106,7 +106,7 @@ class AppServerClient {
       jsonrpc: "2.0",
       id,
       method: "initialize",
-      params: { clientInfo: { name: "web-analyze", title: "web-analyze", version: "0.1.0" } },
+      params: { clientInfo: { name: "asktab", title: "asktab", version: "0.1.0" } },
     });
     await new Promise<void>((resolve, reject) => {
       this.pending.set(id, { resolve: () => resolve(), reject });
