@@ -1,6 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { ClaudeStreamParser } from "../src/providers/claude";
-import { CodexStreamParser } from "../src/providers/codex";
+import { ClaudeStreamParser, claudeArgs } from "../src/providers/claude";
+import { CodexStreamParser, codexArgs } from "../src/providers/codex";
+
+describe("image attachment args", () => {
+  test("claude gains Read tool only when images are attached", () => {
+    expect(claudeArgs("haiku", "medium")).not.toContain("--allowedTools");
+    const withImg = claudeArgs("haiku", "medium", ["/tmp/a.png"]);
+    expect(withImg).toContain("--allowedTools");
+    expect(withImg).toContain("Read");
+  });
+
+  test("codex attaches each image via -i", () => {
+    const args = codexArgs("gpt-5.5", "low", ["/tmp/a.png", "/tmp/b.jpg"]);
+    expect(args.filter((a) => a === "-i")).toHaveLength(2);
+    expect(args).toContain("/tmp/a.png");
+    expect(args).toContain("/tmp/b.jpg");
+    expect(args.indexOf("-")).toBe(args.length - 1);
+  });
+});
 
 const j = (o: unknown) => JSON.stringify(o);
 

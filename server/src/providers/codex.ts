@@ -62,7 +62,7 @@ export class CodexStreamParser {
   }
 }
 
-export function codexArgs(model: string, speed: Speed): string[] {
+export function codexArgs(model: string, speed: Speed, images: string[] = []): string[] {
   return [
     "codex",
     "exec",
@@ -75,6 +75,7 @@ export function codexArgs(model: string, speed: Speed): string[] {
     model,
     "-c",
     `model_reasoning_effort="${speed}"`,
+    ...images.flatMap((f) => ["-i", f]),
     "-", // read prompt from stdin
   ];
 }

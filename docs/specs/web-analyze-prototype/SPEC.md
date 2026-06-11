@@ -66,6 +66,28 @@ Decision: companion server. Native messaging can be revisited if the
   sanitized with `DOMPurify`, code blocks highlighted with `highlight.js`.
 - Settings persisted in `chrome.storage.local`.
 
+## Visual & Video Capture (ADR-002, batch 3)
+
+innerText alone makes videos and layout invisible to the model. Two opt-in
+channels, both user-controlled (hard requirement: never auto-capture):
+
+- **Screenshot** — popup checkbox (persisted, default off).
+  `chrome.tabs.captureVisibleTab` (JPEG q80) → data URL → server decodes to
+  a temp file (deleted after the run) → codex `-i <file>`; claude has no
+  image flag, so the file path is appended to the prompt with
+  `--allowedTools Read` (verified working). Limitation: only the active tab
+  of the focused window can be captured; other tabs degrade with a notice.
+- **Video transcript** — when the extractor detects `<video>` on the target
+  tab, the popup shows a confirm bar; nothing is fetched until checked.
+  YouTube: caption track from `ytInitialPlayerResponse` (MAIN world; the
+  isolated world cannot see page JS), timedtext `fmt=json3`, zh > en > first
+  track, appended to page content as `<video-transcript>`. Stale SPA state
+  (videoId vs URL mismatch) is rejected. Non-YouTube videos: no transcript
+  support, the bar suggests the screenshot channel instead.
+
+Rejected: drawing `<video>` frames to canvas (cross-origin taint);
+`chrome.debugger` full-page capture (debugger banner) deferred.
+
 ## Security
 
 - Server binds 127.0.0.1 only.

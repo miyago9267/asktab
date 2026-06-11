@@ -47,6 +47,18 @@ select, input, textarea, button {
 #tab { flex: 1; min-width: 0; }
 
 .status { color: var(--muted); font-size: 11px; min-height: 14px; }
+
+.chk {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#videobar { align-items: center; }
+#videobar .status { min-height: 0; }
 .status.error { color: #f7768e; }
 
 main {

@@ -19,6 +19,8 @@ export interface ChatRequest {
   speed: Speed;
   messages: ChatMessage[];
   page?: PageContext;
+  /** Screenshots as data URLs (user opt-in from the popup). */
+  images?: string[];
 }
 
 export interface UsageStats {

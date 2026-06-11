@@ -54,9 +54,9 @@ export class ClaudeStreamParser {
   }
 }
 
-export function claudeArgs(model: string, _speed: Speed): string[] {
+export function claudeArgs(model: string, _speed: Speed, images: string[] = []): string[] {
   // speed has no claude CLI equivalent; accepted and ignored (see SPEC ADR notes)
-  return [
+  const args = [
     "claude",
     "-p",
     "--model",
@@ -66,4 +66,7 @@ export function claudeArgs(model: string, _speed: Speed): string[] {
     "--verbose",
     "--include-partial-messages",
   ];
+  // claude -p has no image flag; it views screenshots through the Read tool
+  if (images.length) args.push("--allowedTools", "Read");
+  return args;
 }

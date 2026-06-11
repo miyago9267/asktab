@@ -27,3 +27,16 @@
       turn.completed); per-reply line + session Σ in status bar;
       daily totals persisted to chrome.storage.local ("usageTotals")
 - [ ] Usage history view (data already accumulating)
+
+## Batch 3: visual & video capture (opt-in)
+
+- [x] Server: images[] in ChatRequest, data URL -> temp file -> codex -i /
+      claude Read-tool path note (+ cleanup, arg builder tests)
+- [x] Extension: screenshot checkbox (persisted, active-tab only,
+      captureVisibleTab JPEG q80)
+- [x] Extension: video detection + confirm bar (never auto-extracts)
+- [x] Extension: YouTube transcript via MAIN-world ytInitialPlayerResponse
+      + timedtext json3 (parser tested; stale-SPA guard)
+- [x] HTTP-level E2E: both providers answered about an attached image;
+      temp files cleaned
+- [ ] Manual E2E in Arc: screenshot + YT transcript on real pages (Miyago)

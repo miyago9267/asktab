@@ -18,6 +18,7 @@ export interface ChatRequest {
   speed: string;
   messages: ChatMessage[];
   page?: PageContext;
+  images?: string[];
 }
 
 export interface ModelInfo {

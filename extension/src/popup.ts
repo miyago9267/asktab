@@ -6,7 +6,13 @@ import {
   type ProviderCatalog,
   type UsageStats,
 } from "./api";
-import { extractPage, listTabs } from "./extract";
+import {
+  captureScreenshot,
+  detectVideo,
+  extractPage,
+  fetchYtTranscript,
+  listTabs,
+} from "./extract";
 import { renderMarkdown } from "./markdown";
 import { addUsage, formatUsage, persistUsage } from "./usage";
 
@@ -26,6 +32,27 @@ const messagesEl = $<HTMLElement>("messages");
 const inputEl = $<HTMLTextAreaElement>("input");
 const sendEl = $<HTMLButtonElement>("send");
 const clearEl = $<HTMLButtonElement>("clear");
+const shotEl = $<HTMLInputElement>("shot");
+const videoBarEl = $<HTMLDivElement>("videobar");
+const vtransEl = $<HTMLInputElement>("vtrans");
+const vnoteEl = $<HTMLSpanElement>("vnote");
+
+let videoIsYouTube = false;
+
+/** Video capture is opt-in: the bar only offers, never auto-extracts. */
+async function refreshVideoBar() {
+  videoIsYouTube = false;
+  videoBarEl.hidden = true;
+  vtransEl.checked = false;
+  const tabId = Number(tabEl.value);
+  if (!Number.isFinite(tabId)) return;
+  const info = await detectVideo(tabId);
+  if (!info || info.count === 0) return;
+  videoBarEl.hidden = false;
+  videoIsYouTube = info.isYouTube;
+  vtransEl.disabled = !info.isYouTube;
+  vnoteEl.textContent = info.isYouTube ? "" : "非 YouTube，無法抓字幕；可改用截圖";
+}
 
 let catalog: ProviderCatalog = {};
 let history: ChatMessage[] = [];
@@ -47,7 +74,12 @@ function currentModel(): string {
 
 function saveSettings() {
   chrome.storage.local.set({
-    settings: { provider: providerEl.value, model: currentModel(), speed: speedEl.value },
+    settings: {
+      provider: providerEl.value,
+      model: currentModel(),
+      speed: speedEl.value,
+      shot: shotEl.checked,
+    },
   });
 }
 
@@ -117,7 +149,34 @@ async function send() {
   const tabId = Number(tabEl.value);
   setStatus("擷取分頁內容…");
   const page = Number.isFinite(tabId) ? await extractPage(tabId) : null;
-  setStatus(page ? `context: ${page.title || page.url}` : "此分頁無法擷取，僅以對話內容詢問", !page);
+  const notes: string[] = [];
+
+  if (page && vtransEl.checked && videoIsYouTube) {
+    setStatus("擷取影片字幕…");
+    const t = await fetchYtTranscript(tabId);
+    if ("transcript" in t) {
+      page.content += `\n\n<video-transcript title="${t.title ?? ""}" author="${t.author ?? ""}" lang="${t.lang ?? ""}">\n${t.transcript}\n</video-transcript>`;
+    } else {
+      notes.push(`字幕擷取失敗: ${t.error}`);
+    }
+  }
+
+  const images: string[] = [];
+  if (shotEl.checked) {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    const shot = tab ? await captureScreenshot(tab) : null;
+    if (shot) images.push(shot);
+    else notes.push("截圖僅支援作用中分頁，已略過");
+  }
+
+  setStatus(
+    notes.length
+      ? notes.join("；")
+      : page
+        ? `context: ${page.title || page.url}${images.length ? " + 截圖" : ""}`
+        : "此分頁無法擷取，僅以對話內容詢問",
+    notes.length > 0 || !page,
+  );
 
   const assistantEl = addMessage("assistant", "");
   assistantEl.classList.add("pending");
@@ -143,6 +202,7 @@ async function send() {
         speed: speedEl.value,
         messages: history,
         page: page ?? undefined,
+        images: images.length ? images : undefined,
       },
       (delta) => {
         answer += delta;
@@ -209,6 +269,8 @@ async function init() {
   syncModelList(providerEl.value, settings?.model);
   if (settings?.speed) speedEl.value = settings.speed;
   if (!speedEl.value) syncSpeeds();
+  shotEl.checked = settings?.shot ?? false;
+  refreshVideoBar();
 
   providerEl.addEventListener("change", () => {
     syncModelList(providerEl.value);
@@ -225,6 +287,8 @@ async function init() {
     saveSettings();
   });
   speedEl.addEventListener("change", saveSettings);
+  shotEl.addEventListener("change", saveSettings);
+  tabEl.addEventListener("change", refreshVideoBar);
 
   sendEl.addEventListener("click", send);
   inputEl.addEventListener("keydown", (e) => {
