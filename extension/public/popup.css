@@ -57,8 +57,17 @@ select, input, textarea, button {
   cursor: pointer;
 }
 
-#videobar { align-items: center; }
-#videobar .status { min-height: 0; }
+.chk input { margin: 0; accent-color: var(--accent); }
+
+.capture {
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.cap-label { color: var(--muted); font-size: 11px; }
+
+.capture .status { min-height: 0; }
 .status.error { color: #f7768e; }
 
 main {

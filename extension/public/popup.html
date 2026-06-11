@@ -15,14 +15,15 @@
     </div>
     <div class="row">
       <select id="tab" title="Target tab"></select>
-      <label class="chk" title="附上目前畫面的截圖（僅限作用中分頁，需手動開啟）">
-        <input type="checkbox" id="shot" />截圖
-      </label>
       <button id="clear" title="Clear conversation">清除</button>
     </div>
-    <div class="row" id="videobar" hidden>
-      <label class="chk">
-        <input type="checkbox" id="vtrans" />偵測到影片 — 擷取字幕逐字稿
+    <div class="row capture">
+      <span class="cap-label">附加</span>
+      <label class="chk" title="附上目前畫面的截圖（僅限作用中分頁）">
+        <input type="checkbox" id="shot" />截圖
+      </label>
+      <label class="chk" id="vtrans-label" hidden title="擷取偵測到的影片字幕逐字稿">
+        <input type="checkbox" id="vtrans" />影片字幕
       </label>
       <span id="vnote" class="status"></span>
     </div>

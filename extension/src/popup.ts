@@ -33,31 +33,45 @@ const inputEl = $<HTMLTextAreaElement>("input");
 const sendEl = $<HTMLButtonElement>("send");
 const clearEl = $<HTMLButtonElement>("clear");
 const shotEl = $<HTMLInputElement>("shot");
-const videoBarEl = $<HTMLDivElement>("videobar");
+const vtransLabelEl = $<HTMLLabelElement>("vtrans-label");
 const vtransEl = $<HTMLInputElement>("vtrans");
 const vnoteEl = $<HTMLSpanElement>("vnote");
 
 let videoIsYouTube = false;
 
-/** Video capture is opt-in: the bar only offers, never auto-extracts. */
+/** Video capture is opt-in: the checkbox only offers, never auto-extracts. */
 async function refreshVideoBar() {
   videoIsYouTube = false;
-  videoBarEl.hidden = true;
+  vtransLabelEl.hidden = true;
   vtransEl.checked = false;
+  vnoteEl.textContent = "";
   const tabId = Number(tabEl.value);
   if (!Number.isFinite(tabId)) return;
   const info = await detectVideo(tabId);
   if (!info || info.count === 0) return;
-  videoBarEl.hidden = false;
   videoIsYouTube = info.isYouTube;
-  vtransEl.disabled = !info.isYouTube;
-  vnoteEl.textContent = info.isYouTube ? "" : "非 YouTube，無法抓字幕；可改用截圖";
+  if (info.isYouTube) vtransLabelEl.hidden = false;
+  else vnoteEl.textContent = "偵測到影片（非 YouTube，無字幕可抓）";
+}
+
+interface TranscriptEntry {
+  role: "user" | "assistant";
+  content: string;
+  usage?: UsageStats;
 }
 
 let catalog: ProviderCatalog = {};
-let history: ChatMessage[] = [];
+let transcript: TranscriptEntry[] = [];
 let busy = false;
 let sessionUsage: UsageStats = { input: 0, output: 0, cachedInput: 0 };
+
+const historyForServer = (): ChatMessage[] =>
+  transcript.map(({ role, content }) => ({ role, content }));
+
+/** The popup dies on every blur; the conversation survives in storage. */
+function saveSession() {
+  chrome.storage.local.set({ session: { transcript, sessionUsage } });
+}
 
 function setSessionStatus() {
   setStatus(sessionUsage.input ? `Σ ${formatUsage(sessionUsage)}` : "");
@@ -125,6 +139,13 @@ function syncSpeeds() {
   speedEl.value = speeds.includes(prev) ? prev : (speeds.includes("medium") ? "medium" : speeds[0]);
 }
 
+function appendUsageMeta(el: HTMLElement, usage: UsageStats) {
+  const meta = document.createElement("div");
+  meta.className = "usage";
+  meta.textContent = formatUsage(usage);
+  el.insertAdjacentElement("afterend", meta);
+}
+
 function addMessage(role: "user" | "assistant", content: string): HTMLDivElement {
   const div = document.createElement("div");
   div.className = `msg ${role}`;
@@ -143,7 +164,8 @@ async function send() {
   sendEl.disabled = true;
   inputEl.value = "";
 
-  history.push({ role: "user", content: text });
+  transcript.push({ role: "user", content: text });
+  saveSession();
   addMessage("user", text);
 
   const tabId = Number(tabEl.value);
@@ -200,7 +222,7 @@ async function send() {
         provider: providerEl.value,
         model: currentModel(),
         speed: speedEl.value,
-        messages: history,
+        messages: historyForServer(),
         page: page ?? undefined,
         images: images.length ? images : undefined,
       },
@@ -216,16 +238,14 @@ async function send() {
         usage = u;
       },
     );
-    if (answer) history.push({ role: "assistant", content: answer });
+    if (answer) transcript.push({ role: "assistant", content: answer, usage: usage ?? undefined });
     if (usage) {
-      const meta = document.createElement("div");
-      meta.className = "usage";
-      meta.textContent = formatUsage(usage);
-      assistantEl.insertAdjacentElement("afterend", meta);
+      appendUsageMeta(assistantEl, usage);
       sessionUsage = addUsage(sessionUsage, usage);
       setSessionStatus();
       persistUsage(providerEl.value, currentModel(), usage);
     }
+    saveSession();
   } catch (err) {
     assistantEl.innerHTML = renderMarkdown(`> ⚠ ${String(err)}`);
     setStatus("server 連線失敗，確認 `bun run server` 還活著", true);
@@ -272,6 +292,17 @@ async function init() {
   shotEl.checked = settings?.shot ?? false;
   refreshVideoBar();
 
+  const { session } = await chrome.storage.local.get("session");
+  if (session?.transcript?.length) {
+    transcript = session.transcript;
+    sessionUsage = session.sessionUsage ?? sessionUsage;
+    for (const m of transcript as TranscriptEntry[]) {
+      const el = addMessage(m.role, m.content);
+      if (m.usage) appendUsageMeta(el, m.usage);
+    }
+    setSessionStatus();
+  }
+
   providerEl.addEventListener("change", () => {
     syncModelList(providerEl.value);
     saveSettings();
@@ -300,10 +331,11 @@ async function init() {
     }
   });
   clearEl.addEventListener("click", () => {
-    history = [];
+    transcript = [];
     sessionUsage = { input: 0, output: 0, cachedInput: 0 };
     messagesEl.replaceChildren();
     setStatus("");
+    chrome.storage.local.remove("session");
   });
 
   inputEl.focus();
