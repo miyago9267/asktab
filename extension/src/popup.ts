@@ -4,9 +4,13 @@ import {
   streamChat,
   type ChatMessage,
   type ProviderCatalog,
+  type UsageStats,
 } from "./api";
 import { extractPage, listTabs } from "./extract";
 import { renderMarkdown } from "./markdown";
+import { addUsage, formatUsage, persistUsage } from "./usage";
+
+const FALLBACK_SPEEDS = ["low", "medium", "high"];
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -24,6 +28,11 @@ const clearEl = $<HTMLButtonElement>("clear");
 let catalog: ProviderCatalog = {};
 let history: ChatMessage[] = [];
 let busy = false;
+let sessionUsage: UsageStats = { input: 0, output: 0, cachedInput: 0 };
+
+function setSessionStatus() {
+  setStatus(sessionUsage.input ? `Σ ${formatUsage(sessionUsage)}` : "");
+}
 
 function setStatus(text: string, isError = false) {
   statusEl.textContent = text;
@@ -39,9 +48,35 @@ function saveSettings() {
 function syncModelList(provider: string, keepValue = false) {
   const models = catalog[provider]?.models ?? [];
   modelListEl.replaceChildren(
-    ...models.map((m) => Object.assign(document.createElement("option"), { value: m })),
+    ...models.map((m) =>
+      Object.assign(document.createElement("option"), { value: m.id, label: m.label }),
+    ),
   );
-  if (!keepValue || !modelEl.value) modelEl.value = models[0] ?? "";
+  if (!keepValue || !modelEl.value) modelEl.value = models[0]?.id ?? "";
+  syncSpeeds();
+}
+
+/** Speed options come from the selected model's catalog entry. */
+function syncSpeeds() {
+  const models = catalog[providerEl.value]?.models ?? [];
+  const speeds = models.find((m) => m.id === modelEl.value.trim())?.speeds ?? FALLBACK_SPEEDS;
+  const prev = speedEl.value;
+  if (speeds.length === 0) {
+    speedEl.replaceChildren(
+      Object.assign(document.createElement("option"), { value: "medium", textContent: "n/a" }),
+    );
+    speedEl.disabled = true;
+    speedEl.title = catalog[providerEl.value]?.speedNote ?? "";
+    return;
+  }
+  speedEl.disabled = false;
+  speedEl.title = "Speed / reasoning effort";
+  speedEl.replaceChildren(
+    ...speeds.map((s) =>
+      Object.assign(document.createElement("option"), { value: s, textContent: s }),
+    ),
+  );
+  speedEl.value = speeds.includes(prev) ? prev : (speeds.includes("medium") ? "medium" : speeds[0]);
 }
 
 function addMessage(role: "user" | "assistant", content: string): HTMLDivElement {
@@ -73,6 +108,7 @@ async function send() {
   const assistantEl = addMessage("assistant", "");
   assistantEl.classList.add("pending");
   let answer = "";
+  let usage: UsageStats | null = null;
   let renderQueued = false;
 
   const rerender = () => {
@@ -102,8 +138,20 @@ async function send() {
         answer += `\n\n> ⚠ ${message}`;
         rerender();
       },
+      (u) => {
+        usage = u;
+      },
     );
     if (answer) history.push({ role: "assistant", content: answer });
+    if (usage) {
+      const meta = document.createElement("div");
+      meta.className = "usage";
+      meta.textContent = formatUsage(usage);
+      assistantEl.insertAdjacentElement("afterend", meta);
+      sessionUsage = addUsage(sessionUsage, usage);
+      setSessionStatus();
+      persistUsage(providerEl.value, modelEl.value.trim(), usage);
+    }
   } catch (err) {
     assistantEl.innerHTML = renderMarkdown(`> ⚠ ${String(err)}`);
     setStatus("server 連線失敗，確認 `bun run server` 還活著", true);
@@ -146,23 +194,32 @@ async function init() {
   if (settings?.provider && catalog[settings.provider]) providerEl.value = settings.provider;
   syncModelList(providerEl.value, true);
   if (settings?.model) modelEl.value = settings.model;
+  syncSpeeds();
   if (settings?.speed) speedEl.value = settings.speed;
+  if (!speedEl.value) syncSpeeds();
 
   providerEl.addEventListener("change", () => {
     syncModelList(providerEl.value);
     saveSettings();
   });
-  for (const el of [modelEl, speedEl]) el.addEventListener("change", saveSettings);
+  modelEl.addEventListener("change", () => {
+    syncSpeeds();
+    saveSettings();
+  });
+  speedEl.addEventListener("change", saveSettings);
 
   sendEl.addEventListener("click", send);
   inputEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
+      // Enter that commits an IME composition (RIME etc.) must not send
+      if (e.isComposing || e.keyCode === 229) return;
       e.preventDefault();
       send();
     }
   });
   clearEl.addEventListener("click", () => {
     history = [];
+    sessionUsage = { input: 0, output: 0, cachedInput: 0 };
     messagesEl.replaceChildren();
     setStatus("");
   });

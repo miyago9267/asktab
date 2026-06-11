@@ -20,10 +20,24 @@ export interface ChatRequest {
   page?: PageContext;
 }
 
+export interface ModelInfo {
+  id: string;
+  label: string;
+  speeds: string[];
+}
+
 export type ProviderCatalog = Record<
   string,
-  { label: string; models: string[]; speedNote: string }
+  { label: string; models: ModelInfo[]; speedNote: string }
 >;
+
+export interface UsageStats {
+  input: number;
+  output: number;
+  cachedInput: number;
+  costUsd?: number;
+  durationMs?: number;
+}
 
 export async function checkHealth(): Promise<boolean> {
   try {
@@ -48,6 +62,7 @@ export async function streamChat(
   req: ChatRequest,
   onDelta: (text: string) => void,
   onError: (message: string) => void,
+  onUsage: (usage: UsageStats) => void,
 ): Promise<void> {
   const res = await fetch(`${SERVER}/chat`, {
     method: "POST",
@@ -69,13 +84,14 @@ export async function streamChat(
     buffer = lines.pop() ?? "";
     for (const line of lines) {
       if (!line.startsWith("data:")) continue;
-      let ev: { type: string; text?: string; message?: string };
+      let ev: { type: string; text?: string; message?: string; usage?: UsageStats };
       try {
         ev = JSON.parse(line.slice(5).trim());
       } catch {
         continue;
       }
       if (ev.type === "delta" && ev.text) onDelta(ev.text);
+      else if (ev.type === "usage" && ev.usage) onUsage(ev.usage);
       else if (ev.type === "error") onError(ev.message ?? "unknown error");
       else if (ev.type === "done") return;
     }

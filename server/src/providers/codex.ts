@@ -38,6 +38,19 @@ export class CodexStreamParser {
         return this.sawDelta ? [] : [{ type: "delta", text }];
       }
     }
+    if (obj?.type === "turn.completed" && obj.usage) {
+      const u = obj.usage;
+      return [
+        {
+          type: "usage",
+          usage: {
+            input: u.input_tokens ?? 0,
+            output: u.output_tokens ?? 0,
+            cachedInput: u.cached_input_tokens ?? 0,
+          },
+        },
+      ];
+    }
     if (obj?.type === "turn.failed") {
       return [{ type: "error", message: String(obj.error?.message ?? "codex turn failed") }];
     }

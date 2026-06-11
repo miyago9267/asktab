@@ -3,20 +3,6 @@ import { ClaudeStreamParser, claudeArgs } from "./claude";
 import { CodexStreamParser, codexArgs } from "./codex";
 import { buildPrompt } from "../prompt";
 
-/** Single source of truth for the popup's settings dropdowns. */
-export const CATALOG = {
-  claude: {
-    label: "Claude (claude CLI)",
-    models: ["sonnet", "opus", "haiku"],
-    speedNote: "speed is ignored by the claude CLI",
-  },
-  codex: {
-    label: "Codex (codex CLI)",
-    models: ["gpt-5.5", "gpt-5.5-codex"],
-    speedNote: "speed maps to model_reasoning_effort",
-  },
-} as const;
-
 interface LineParser {
   feed(line: string): ProviderEvent[];
 }

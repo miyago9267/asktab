@@ -21,7 +21,24 @@ export interface ChatRequest {
   page?: PageContext;
 }
 
+export interface UsageStats {
+  /** Total input tokens, including cached. */
+  input: number;
+  output: number;
+  cachedInput: number;
+  costUsd?: number;
+  durationMs?: number;
+}
+
+export interface ModelInfo {
+  id: string;
+  label: string;
+  /** Reasoning-effort levels the model supports; empty = speed not applicable. */
+  speeds: string[];
+}
+
 /** Streamed unit emitted by a provider adapter. */
 export type ProviderEvent =
   | { type: "delta"; text: string }
+  | { type: "usage"; usage: UsageStats }
   | { type: "error"; message: string };

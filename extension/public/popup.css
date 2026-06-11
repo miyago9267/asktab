@@ -108,6 +108,13 @@ main {
   color: var(--muted);
 }
 
+.usage {
+  align-self: flex-start;
+  color: var(--muted);
+  font-size: 10px;
+  margin: -6px 0 0 4px;
+}
+
 footer {
   display: flex;
   gap: 6px;

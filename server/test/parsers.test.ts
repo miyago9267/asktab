@@ -43,6 +43,37 @@ describe("ClaudeStreamParser", () => {
     expect(ev[0]?.type).toBe("error");
   });
 
+  test("emits usage from result event", () => {
+    const p = new ClaudeStreamParser();
+    p.feed(
+      j({
+        type: "stream_event",
+        event: { type: "content_block_delta", delta: { type: "text_delta", text: "x" } },
+      }),
+    );
+    const ev = p.feed(
+      j({
+        type: "result",
+        subtype: "success",
+        result: "x",
+        duration_ms: 4200,
+        total_cost_usd: 0.0123,
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+          cache_read_input_tokens: 100,
+          cache_creation_input_tokens: 20,
+        },
+      }),
+    );
+    expect(ev).toEqual([
+      {
+        type: "usage",
+        usage: { input: 130, output: 5, cachedInput: 100, costUsd: 0.0123, durationMs: 4200 },
+      },
+    ]);
+  });
+
   test("ignores malformed lines", () => {
     const p = new ClaudeStreamParser();
     expect(p.feed("not json")).toEqual([]);
@@ -81,6 +112,24 @@ describe("CodexStreamParser", () => {
     const p = new CodexStreamParser();
     const ev = p.feed(j({ type: "turn.failed", error: { message: "boom" } }));
     expect(ev).toEqual([{ type: "error", message: "boom" }]);
+  });
+
+  test("emits usage from turn.completed", () => {
+    const p = new CodexStreamParser();
+    const ev = p.feed(
+      j({
+        type: "turn.completed",
+        usage: {
+          input_tokens: 37995,
+          cached_input_tokens: 5504,
+          output_tokens: 34,
+          reasoning_output_tokens: 26,
+        },
+      }),
+    );
+    expect(ev).toEqual([
+      { type: "usage", usage: { input: 37995, output: 34, cachedInput: 5504 } },
+    ]);
   });
 
   test("ignores reasoning and command items", () => {

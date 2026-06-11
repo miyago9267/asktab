@@ -29,9 +29,25 @@ export class ClaudeStreamParser {
       if (obj.subtype && obj.subtype !== "success") {
         return [{ type: "error", message: String(obj.result ?? obj.subtype) }];
       }
+      const events: ProviderEvent[] = [];
       if (!this.sawDelta && typeof obj.result === "string") {
-        return [{ type: "delta", text: obj.result }];
+        events.push({ type: "delta", text: obj.result });
       }
+      const u = obj.usage;
+      if (u) {
+        const cached = u.cache_read_input_tokens ?? 0;
+        events.push({
+          type: "usage",
+          usage: {
+            input: (u.input_tokens ?? 0) + cached + (u.cache_creation_input_tokens ?? 0),
+            output: u.output_tokens ?? 0,
+            cachedInput: cached,
+            costUsd: obj.total_cost_usd,
+            durationMs: obj.duration_ms,
+          },
+        });
+      }
+      return events;
     }
 
     return [];
