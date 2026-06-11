@@ -1,6 +1,7 @@
 {
   "name": "web-analyze",
   "private": true,
+  "license": "MIT",
   "workspaces": ["server", "extension"],
   "scripts": {
     "server": "bun run --cwd server dev",
