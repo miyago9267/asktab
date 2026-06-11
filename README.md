@@ -7,12 +7,14 @@ already have (`claude`, `codex`) — no API keys, no extra accounts.
 
 I wanted "ask an LLM about this page" in my browser, but:
 
-- I don't want to install ChatGPT Atlas just for that.
+- I refuse to install ChatGPT Atlas — a cheap Chromium knockoff with zero
+  performance tuning, where the AI features are the only part that works.
+  I'm not replacing my daily browser with a wrapper around a chatbox.
 - The Claude for Chrome extension doesn't support Arc.
 
 Since I already pay for Claude Max and ChatGPT, and both ship a local CLI,
 this extension just bridges the browser to those CLIs and works in any
-Chromium browser — Arc included.
+Chromium browser — Arc included. My browser stays my browser.
 
 ## How it works
 
