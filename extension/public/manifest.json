@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AskTab",
-  "version": "0.1.0",
-  "description": "Analyze the current or a specific tab with local Claude / Codex CLIs",
+  "version": "0.2.0",
+  "description": "Chat with any browser tab via local AI CLIs (claude, codex, gemini, opencode)",
   "permissions": ["tabs", "scripting", "storage", "nativeMessaging"],
   "host_permissions": ["<all_urls>", "http://127.0.0.1:8787/*"],
   "action": {

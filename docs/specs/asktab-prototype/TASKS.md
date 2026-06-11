@@ -13,7 +13,7 @@
 - [x] Extension: build script (bun build + static copy)
 - [x] HTTP-level E2E: both providers verified via curl (claude streams
       token deltas; codex 0.134 returns whole message — no delta events)
-- [ ] Manual E2E in Arc: load unpacked, analyze a real page (Miyago)
+- [x] Manual E2E in Arc: confirmed working
 
 ## Batch 2: bugfixes + usage
 
@@ -39,7 +39,7 @@
       + timedtext json3 (parser tested; stale-SPA guard)
 - [x] HTTP-level E2E: both providers answered about an attached image;
       temp files cleaned
-- [ ] Manual E2E in Arc: screenshot + YT transcript on real pages (Miyago)
+- [x] Manual E2E in Arc: confirmed working
 
 ## Batch 4: codex streaming
 
@@ -62,7 +62,7 @@
 - [x] build:ext injects key into dist/manifest.json; nativeMessaging perm
 - [x] popup: native-first transport, HTTP dev server as automatic fallback
 - [x] E2E: framed health/providers/chat verified against the real host
-- [ ] Arc live test: reload extension, confirm "no server" flow (Miyago)
+- [x] Arc live test: confirmed working
 
 ## Batch 6: multi-provider (gemini + opencode)
 
@@ -77,7 +77,7 @@
       to all Bun.which/Bun.spawn call sites
 - [x] E2E under bare PATH via host: 4 providers detected, gemini + opencode
       streamed with usage
-- [ ] Arc live test with gemini/opencode (Miyago)
+- [x] Arc live test with gemini/opencode: confirmed working
 
 ## Batch 7: Gatekeeper fix (quarantine-safe transport)
 
@@ -88,4 +88,4 @@
       messaging fallback with Gatekeeper warning
 - [x] Verified: dylib via launchd path has no quarantine xattr; opencode
       chat clean end-to-end
-- [ ] Arc retest after extension reload (Miyago)
+- [x] Arc retest after extension reload — confirmed clean
