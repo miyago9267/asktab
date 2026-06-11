@@ -1,0 +1,10 @@
+{
+  "name": "web-analyze",
+  "private": true,
+  "workspaces": ["server", "extension"],
+  "scripts": {
+    "server": "bun run --cwd server dev",
+    "build:ext": "bun run --cwd extension build",
+    "test": "bun test server"
+  }
+}

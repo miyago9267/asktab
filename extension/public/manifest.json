@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Web Analyze",
+  "version": "0.1.0",
+  "description": "Analyze the current or a specific tab with local Claude / Codex CLIs",
+  "permissions": ["tabs", "scripting", "storage"],
+  "host_permissions": ["<all_urls>", "http://127.0.0.1:8787/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Web Analyze"
+  }
+}
