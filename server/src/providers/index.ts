@@ -1,6 +1,7 @@
 import { unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import type { ChatRequest, ProviderEvent, ProviderId } from "../types";
+import { runCodexAppServer } from "./appserver";
 import { ClaudeStreamParser, claudeArgs } from "./claude";
 import { CodexStreamParser, codexArgs } from "./codex";
 import { buildPrompt } from "../prompt";
@@ -41,15 +42,46 @@ function imageNote(provider: ProviderId, paths: string[]): string {
 }
 
 /**
- * Spawns the provider CLI, writes the flattened prompt to stdin, and
- * yields parsed events from its JSONL stdout.
+ * Streams one chat. codex goes through the app-server (token-level deltas);
+ * if that fails before any output, it falls back to the exec pipeline,
+ * which only yields the full message at the end. claude uses -p stream-json.
  */
 export async function* runChat(req: ChatRequest): AsyncGenerator<ProviderEvent> {
   const imagePaths = await writeImageFiles(req.images ?? []);
   const prompt = buildPrompt(req) + imageNote(req.provider, imagePaths);
-  const parser = makeParser(req.provider);
 
   try {
+    if (req.provider === "codex") {
+      let yielded = false;
+      try {
+        for await (const ev of runCodexAppServer(req.model, req.speed, prompt, imagePaths)) {
+          yielded = true;
+          yield ev;
+        }
+        return;
+      } catch (err) {
+        if (yielded) {
+          yield { type: "error", message: `codex app-server: ${String(err)}` };
+          return;
+        }
+        console.error("codex app-server unavailable, falling back to exec:", err);
+      }
+    }
+    yield* runCliChat(req, prompt, imagePaths);
+  } finally {
+    await Promise.all(imagePaths.map((p) => unlink(p).catch(() => {})));
+  }
+}
+
+/** Spawn-per-request CLI pipeline (claude always; codex as fallback). */
+async function* runCliChat(
+  req: ChatRequest,
+  prompt: string,
+  imagePaths: string[],
+): AsyncGenerator<ProviderEvent> {
+  const parser = makeParser(req.provider);
+
+  {
     const proc = Bun.spawn(makeArgs(req, imagePaths), {
       stdin: new TextEncoder().encode(prompt),
       stdout: "pipe",
@@ -75,7 +107,5 @@ export async function* runChat(req: ChatRequest): AsyncGenerator<ProviderEvent> 
         message: `${req.provider} exited with code ${exitCode}: ${stderr.slice(-2000)}`,
       };
     }
-  } finally {
-    await Promise.all(imagePaths.map((p) => unlink(p).catch(() => {})));
   }
 }

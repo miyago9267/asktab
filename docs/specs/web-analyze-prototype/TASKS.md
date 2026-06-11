@@ -40,3 +40,15 @@
 - [x] HTTP-level E2E: both providers answered about an attached image;
       temp files cleaned
 - [ ] Manual E2E in Arc: screenshot + YT transcript on real pages (Miyago)
+
+## Batch 4: codex streaming
+
+- [x] Investigate: exec --json / plain / feature flags — no deltas anywhere
+- [x] Spike: app-server v2 (thread/start + turn/start) streams
+      item/agentMessage/delta token-by-token
+- [x] AppServerClient (singleton JSON-RPC over stdio, restart on death,
+      pending-request rejection) + notification mapper (tested)
+- [x] runChat: codex via app-server, exec fallback when no output yielded;
+      images as localImage inputs; idle watchdog 300s
+- [x] HTTP E2E: token-level deltas + usage + process reuse verified
+- [ ] Future: model/list RPC could replace `codex debug models`

@@ -88,6 +88,25 @@ channels, both user-controlled (hard requirement: never auto-capture):
 Rejected: drawing `<video>` frames to canvas (cross-origin taint);
 `chrome.debugger` full-page capture (debugger banner) deferred.
 
+## Codex Streaming (ADR-003, batch 4)
+
+`codex exec` cannot stream: `--json`, plain stdout, and feature flags all
+deliver the message only at turn end (verified on 0.134). True deltas exist
+only in the app-server protocol (the desktop app's JSON-RPC-over-stdio API,
+marked experimental).
+
+Decision: codex chats run through a single long-lived `codex app-server`
+child (v2 protocol): `initialize` → ephemeral read-only `thread/start` per
+request → `turn/start` (effort = speed; images as `localImage` inputs) →
+`item/agentMessage/delta` notifications stream tokens;
+`thread/tokenUsage/updated` supplies usage, `turn/completed` ends the turn.
+A 5-minute idle watchdog guards hung turns.
+
+Risk: experimental protocol may drift across codex versions. Mitigation:
+if the app-server path fails before yielding any output, the request
+falls back to the exec pipeline (whole message at the end). claude already
+streams via `--include-partial-messages`; nothing changed there.
+
 ## Security
 
 - Server binds 127.0.0.1 only.
