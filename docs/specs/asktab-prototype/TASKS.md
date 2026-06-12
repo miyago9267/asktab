@@ -102,7 +102,12 @@
       (visibility, not display — panel JS drives the capture)
 - [x] Manifest: background worker + web_accessible_resources; popup
       demoted to fallback surface
-- [ ] Manual E2E in Arc + Chrome: toggle, chat, screenshot self-exclusion,
-      popup fallback on chrome://
-- [ ] Future: resize handle, in-panel close button, page-fullscreen
-      interaction
+- [x] Arc live test: panel toggles and chats (Miyago)
+- [x] Resize grip (pointer capture over the iframe, width persisted to
+      storage, clamped 320–900) + edge collapse button with slide
+      animation (visibility delayed past the transition); capture-hide
+      switched to host opacity — descendants can't override it, and the
+      iframe keeps rendering during capture
+- [ ] Manual E2E in Arc + Chrome: resize, collapse animation, screenshot
+      self-exclusion, popup fallback on chrome://
+- [ ] Future: page-fullscreen interaction
