@@ -89,3 +89,20 @@
 - [x] Verified: dylib via launchd path has no quarantine xattr; opencode
       chat clean end-to-end
 - [x] Arc retest after extension reload — confirmed clean
+
+## Batch 8: sidebar panel mode
+
+- [x] restricted.ts: isScriptable URL predicate (tested)
+- [x] Background worker: action click toggles the panel (content.js
+      injected on demand); per-tab popup fallback on non-scriptable pages
+- [x] Content script: closed-shadow host + fixed right-side iframe
+      (panel.html); toggle / capture-hide / capture-show messages
+- [x] panel.html + panel.css: popup UI reused at full height
+- [x] Capture flow hides the panel during screenshot / frame sampling
+      (visibility, not display — panel JS drives the capture)
+- [x] Manifest: background worker + web_accessible_resources; popup
+      demoted to fallback surface
+- [ ] Manual E2E in Arc + Chrome: toggle, chat, screenshot self-exclusion,
+      popup fallback on chrome://
+- [ ] Future: resize handle, in-panel close button, page-fullscreen
+      interaction

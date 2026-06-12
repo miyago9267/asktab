@@ -157,6 +157,17 @@ export async function restoreVideo(tabId: number, t: number, paused: boolean): P
     .catch(() => {});
 }
 
+/**
+ * The injected sidebar is part of the page, so captureVisibleTab would
+ * include it; hide the panel host before capturing, restore after.
+ * No-op (rejected and swallowed) when the tab has no content script.
+ */
+export function setPanelCaptureHidden(tabId: number, hidden: boolean): Promise<unknown> {
+  return chrome.tabs
+    .sendMessage(tabId, { type: hidden ? "asktab:capture-hide" : "asktab:capture-show" })
+    .catch(() => {});
+}
+
 /** Captures the visible viewport; only valid when the tab is active. */
 export async function captureScreenshot(tab: chrome.tabs.Tab): Promise<string | null> {
   if (!tab.active || tab.windowId == null) return null;

@@ -1,0 +1,5 @@
+/* Sidebar variant: the host iframe dictates the size, not the popup budget. */
+body {
+  width: 100%;
+  height: 100vh;
+}

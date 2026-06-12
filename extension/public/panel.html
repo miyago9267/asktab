@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="hljs.css" />
+  <link rel="stylesheet" href="popup.css" />
+  <link rel="stylesheet" href="panel.css" />
+</head>
+<body>
+  <header>
+    <div class="row">
+      <select id="provider" title="Provider"></select>
+      <select id="model" title="Model"></select>
+      <input id="model-custom" hidden placeholder="model id" spellcheck="false" />
+      <select id="speed" title="Speed / reasoning effort"></select>
+    </div>
+    <div class="row">
+      <select id="tab" title="Target tab"></select>
+      <button id="stats-btn" title="Usage stats">統計</button>
+      <button id="clear" title="Clear conversation">清除</button>
+    </div>
+    <div class="row capture">
+      <span class="cap-label">附加</span>
+      <label class="chk" title="附上目前畫面的截圖（僅限作用中分頁）">
+        <input type="checkbox" id="shot" />截圖
+      </label>
+      <span class="cap-label" id="vmode-label" hidden>影片</span>
+      <select id="vmode" hidden title="影片擷取方式">
+        <option value="none">不擷取</option>
+        <option value="transcript">字幕</option>
+        <option value="frames">影格採樣</option>
+      </select>
+      <span id="vnote" class="status"></span>
+    </div>
+    <div id="status" class="status"></div>
+  </header>
+
+  <main id="messages"></main>
+  <main id="stats" hidden></main>
+
+  <footer>
+    <textarea id="input" rows="2" placeholder="分析、摘要，或任何想問這個分頁的事…"></textarea>
+    <button id="send">送出</button>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

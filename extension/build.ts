@@ -3,7 +3,7 @@ import { cp } from "node:fs/promises";
 const root = import.meta.dir;
 
 const result = await Bun.build({
-  entrypoints: [`${root}/src/popup.ts`],
+  entrypoints: [`${root}/src/popup.ts`, `${root}/src/content.ts`, `${root}/src/background.ts`],
   outdir: `${root}/dist`,
   target: "browser",
   format: "iife",

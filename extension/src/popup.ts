@@ -12,6 +12,7 @@ import {
   extractPage,
   fetchYtTranscript,
   listTabs,
+  setPanelCaptureHidden,
 } from "./extract";
 import { renderMarkdown } from "./markdown";
 import { sampleVideoFrames } from "./sampler";
@@ -246,25 +247,31 @@ async function send() {
   }
 
   const images: string[] = [];
-  if (vmodeEl.value === "frames") {
-    const tab = await chrome.tabs.get(tabId).catch(() => null);
-    if (tab?.active) {
-      const frames = await sampleVideoFrames(tab, 8, (i, n) => setStatus(`影格採樣中 ${i}/${n}…`));
-      if (frames.length) {
-        images.push(...frames);
-        if (page) page.content += `\n\n(${frames.length} video frames sampled evenly across the video are attached, in chronological order.)`;
+  const wantsCapture = vmodeEl.value === "frames" || shotEl.checked;
+  if (wantsCapture) await setPanelCaptureHidden(tabId, true);
+  try {
+    if (vmodeEl.value === "frames") {
+      const tab = await chrome.tabs.get(tabId).catch(() => null);
+      if (tab?.active) {
+        const frames = await sampleVideoFrames(tab, 8, (i, n) => setStatus(`影格採樣中 ${i}/${n}…`));
+        if (frames.length) {
+          images.push(...frames);
+          if (page) page.content += `\n\n(${frames.length} video frames sampled evenly across the video are attached, in chronological order.)`;
+        } else {
+          notes.push("影格採樣失敗");
+        }
       } else {
-        notes.push("影格採樣失敗");
+        notes.push("影格採樣僅支援作用中分頁");
       }
-    } else {
-      notes.push("影格採樣僅支援作用中分頁");
     }
-  }
-  if (shotEl.checked) {
-    const tab = await chrome.tabs.get(tabId).catch(() => null);
-    const shot = tab ? await captureScreenshot(tab) : null;
-    if (shot) images.push(shot);
-    else notes.push("截圖僅支援作用中分頁，已略過");
+    if (shotEl.checked) {
+      const tab = await chrome.tabs.get(tabId).catch(() => null);
+      const shot = tab ? await captureScreenshot(tab) : null;
+      if (shot) images.push(shot);
+      else notes.push("截圖僅支援作用中分頁，已略過");
+    }
+  } finally {
+    if (wantsCapture) await setPanelCaptureHidden(tabId, false);
   }
 
   setStatus(

@@ -7,6 +7,6 @@
     "server": "bun run --cwd server dev",
     "build:ext": "bun run --cwd extension build",
     "install-host": "bun run scripts/install-host.ts",
-    "test": "bun test server"
+    "test": "bun test server extension"
   }
 }

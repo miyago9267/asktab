@@ -198,3 +198,39 @@ server carry no com.apple.quarantine xattr.
 
 Bonus: the codex app-server child persists across popups, removing the
 per-popup ~1s handshake of the pure native path.
+
+## Sidebar Panel (ADR-007, batch 8)
+
+Problem: the action popup is capped at 460x600, dies on every blur, and a
+persistent full-height surface is wanted — including in Arc, which has
+never implemented `chrome.sidePanel` and (in maintenance mode since the
+Dia pivot) never will.
+
+Options:
+
+1. **`chrome.sidePanel`** — native UX, but renders nothing in Arc.
+2. **Injected overlay panel (chosen)** — a content script appends a fixed
+   right-side iframe inside a closed shadow root, pointing at
+   `panel.html`, an extension page with full chrome.* API access. Works
+   wherever content scripts run, i.e. also in Arc.
+
+Decision: injected overlay — one code path for every Chromium browser.
+The popup remains as fallback for non-scriptable pages.
+
+Mechanics:
+
+- Background worker: action click toggles the panel, injecting
+  `content.js` on demand (no always-on content script). On non-scriptable
+  URLs (`restricted.ts`: non-http(s) schemes, the Web Store) it restores
+  the popup via per-tab `chrome.action.setPopup`.
+- `panel.html` reuses popup.js/popup.css wholesale; `panel.css` lifts the
+  fixed popup size to 100% x 100vh. Only `panel.html` is listed in
+  `web_accessible_resources`.
+- Captures would include the panel itself (it is part of the page), so the
+  capture flow hides the host via `visibility: hidden` first and restores
+  it afterwards — visibility (not display) keeps the panel's own JS, which
+  drives the capture, running while unpainted.
+
+Known limits (accepted): no live cross-tab sync between panel instances
+(same storage model as the popup); page fullscreen covers the panel; no
+resize handle yet.

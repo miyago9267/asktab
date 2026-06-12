@@ -6,7 +6,15 @@
   "permissions": ["tabs", "scripting", "storage", "nativeMessaging"],
   "host_permissions": ["<all_urls>", "http://127.0.0.1:8787/*"],
   "action": {
-    "default_popup": "popup.html",
     "default_title": "AskTab"
-  }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["panel.html"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
 }
