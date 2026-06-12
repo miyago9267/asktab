@@ -19,16 +19,19 @@ Chromium browser — Arc included. My browser stays my browser.
 ## How it works
 
 ```
-popup (settings + markdown chat) ──native messaging──▶ host (Bun, on demand)
-        │                                                ├─ claude -p (stream-json)
-        └─ chrome.scripting ──▶ tab content              └─ codex app-server (deltas)
+sidebar panel (settings + markdown chat) ──http/native──▶ server (Bun, launchd)
+        │                                                  ├─ claude -p (stream-json)
+        └─ chrome.scripting ──▶ tab content                └─ codex app-server (deltas)
            (article/main/body text + selection)
 ```
 
-- **Extension** (MV3, TypeScript): popup with provider / model / speed /
-  target-tab pickers and a chat window (marked + DOMPurify + highlight.js).
-  Page text and your selection are captured on every send; screenshots and
-  YouTube transcripts are opt-in.
+- **Extension** (MV3, TypeScript): click the icon to slide in a right-side
+  panel (injected iframe — works in Arc, which never implemented
+  `chrome.sidePanel`), resizable and collapsible, with provider / model /
+  speed / target-tab pickers and a chat window (marked + DOMPurify +
+  highlight.js). On pages extensions can't touch (`chrome://`, Web Store)
+  it falls back to a popup. Page text and your selection are captured on
+  every send; screenshots and YouTube transcripts are opt-in.
 - **Native host** (Bun): launched by the browser on demand, gone when the
   popup closes — nothing to keep running. Wraps `claude -p` and a codex
   app-server session, both streaming token deltas. Codex models are
@@ -54,10 +57,10 @@ whichever are installed. Re-run `install-host` if you move the repo.
 ## Development
 
 ```bash
-bun test server                      # prompt builder + parser tests
-bun run --cwd extension watch        # rebuild popup on change
+bun test server extension            # prompt builder + parser tests
+bun run --cwd extension watch        # rebuild extension on change
 bun run server                       # optional HTTP dev server (curl-able);
-                                     # the popup falls back to it automatically
+                                     # the panel falls back to it automatically
 ```
 
 Spec lives in `docs/specs/asktab-prototype/`.

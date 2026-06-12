@@ -108,6 +108,7 @@
       animation (visibility delayed past the transition); capture-hide
       switched to host opacity — descendants can't override it, and the
       iframe keeps rendering during capture
-- [ ] Manual E2E in Arc + Chrome: resize, collapse animation, screenshot
-      self-exclusion, popup fallback on chrome://
+- [x] Arc live test: resize grip + collapse animation confirmed
+- [ ] Remaining manual E2E: screenshot self-exclusion, popup fallback on
+      chrome://, a pass in stock Chrome
 - [ ] Future: page-fullscreen interaction
